@@ -80,7 +80,27 @@ cursor.execute('''
                WHERE customers.name = 'Иван Иванов'
 ''')
 rows = cursor.fetchall()
-print(rows)         
+print(rows)
+        
+cursor.execute('''
+               SELECT product_name, quantity, price
+               FROM order_items
+               JOIN orders ON orders.orders_id = order_items.order_id
+               WHERE orders.orders_id = 3
+               ORDER BY price DESC
+''')       
+     
+cursor.execute('''
+               SELECT customers.name, SUM(order_items.price * order_items.quantity) AS TotalSpent
+               FROM customers
+               JOIN orders ON orders.customer_id = customers.customers_id
+               JOIN order_items ON order_items.order_id = orders.orders_id
+               GROUP BY customers.customers_id
+               HAVING SUM(order_items.price * order_items.quantity) > 5000
+''')      
+rows = cursor.fetchall()     
+for i in rows:
+     print(i, end = '/n')   
 cursor.close()
 conn.close()
 
