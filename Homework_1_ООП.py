@@ -245,3 +245,21 @@ class Lion:
         self.animal_action.make_action(self)
 
 
+class Temperature:
+    def __init__(temperature_cel:float):
+        self.__temperature_cel = temperature_cel
+
+    @classmethod
+    def convert_to_fahrenheit(cls):
+        cls.__fahrenheit = cls.__temperature_cel * 33.8
+        return cls.__fahrenheit
+    
+    @property
+    def kelvin(cls):
+        return cls.__temperature_cel * 274.15
+    
+    @staticmethod
+    def check_ice(cls):
+        if cls.__temperature_cel <= 0:
+            return print('Wather is freeze')
+        return print('Water is warm')
