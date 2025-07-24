@@ -29,7 +29,7 @@ cursor.execute('''
              CONSTRAINT FK_order_items_customer FOREIGN KEY(order_id) REFERENCES orders(orders_id)
         	);
     	''')
-
+#Добавление покупателей
 cursor.execute('''
                INSERT INTO customers(name, email)
                VALUES 
@@ -53,7 +53,7 @@ cursor.execute('''
 	                    ('Андрей Толстой'), ('and@order.com')
                     )               
                ''')
-
+#Вставка заказов
 cursor.execute('''
                 INSERT INTO orders(customer_id, order_date)
                 VALUES (6, '2024/09/25')               
@@ -65,7 +65,7 @@ cursor.execute('''
                ''')
 #Дописать запросы на вставку в orders
 
-
+#Вставка товаров
 cursor.execute('''
                 INSERT INTO order_items (order_id, product_name, quantity, price)
                 VALUES (1, 'Tomato', 10, 10.50)               
@@ -73,7 +73,14 @@ cursor.execute('''
 #Дописать запросы на вставку в order_items
 
 
-
+cursor.execute('''
+               SELECT orders_id, order_date
+               FROM orders
+               JOIN customers ON customers.customers_id = orders.customer_id
+               WHERE customers.name = 'Иван Иванов'
+''')
+rows = cursor.fetchall()
+print(rows)         
 cursor.close()
 conn.close()
 
