@@ -1,0 +1,93 @@
+INSERT INTO order_items (items_id, order_id, product_name, quantity, price)
+SELECT
+    -- items_id начиная с 11 (Serial)
+    1 + row_number() OVER () AS items_id,
+    -- Случайный order_id от 1 до 1000
+    floor(random() * 1000 + 1)::integer AS order_id,
+    -- product_name: Товар N (N от 1 до 1 000 000)
+    'Товар ' || g AS product_name,
+    -- quantity от 1 до 10
+    floor(random() * 10 + 1)::integer AS quantity,
+    -- price от 100 до 100 000
+    round((random() * 99900 + 100)::numeric, 2)::double precision AS price
+FROM generate_series(1, 1000000) AS g;
+
+
+INSERT INTO order_items (items_id, order_id, product_name, quantity, price)
+SELECT
+   
+    1000011 + row_number() OVER () AS items_id,
+   
+    floor(random() * 2000 + 1)::integer AS order_id,
+    'Товар ' || g AS product_name,
+    floor(random() * 10 + 1)::integer AS quantity,
+    round((random() * 99900 + 100)::numeric, 2)::double precision AS price
+FROM generate_series(1, 1000) AS g;
+
+Скажу честно генераторы подсмотрел
+
+CREATE INDEX orders_customer_id_at_idx ON orders(customer_id);
+CREATE INDEX idx_order_items_order_id_price ON order_items(order_id, price);
+CREATE INDEX order_items_product_name_idx ON order_items(product_name);
+
+
+EXPLAIN ANALYZE SELECT * FROM order_items
+WHERE price > 10000 AND order_id = 123
+
+"Bitmap Heap Scan on order_items  (cost=41.61..2643.24 rows=896 width=37) (actual time=0.239..0.853 rows=885 loops=1)"
+"  Recheck Cond: ((order_id = 123) AND (price > '10000'::double precision))"
+"  Heap Blocks: exact=846"
+"  ->  Bitmap Index Scan on idx_order_items_order_id_price  (cost=0.00..41.38 rows=896 width=0) (actual time=0.120..0.120 rows=885 loops=1)"
+"        Index Cond: ((order_id = 123) AND (price > '10000'::double precision))"
+"Planning Time: 0.105 ms"
+"Execution Time: 0.889 ms"
+
+
+
+EXPLAIN ANALYZE SELECT customer_id, orders_id, order_date, order_items.product_name, order_items.quantity, order_items.price
+FROM orders
+JOIN order_items ON orders.orders_id = order_items.order_id
+WHERE orders.customer_id = 1
+
+"Hash Join  (cost=32.54..20997.08 rows=201693 width=41) (actual time=0.143..91.450 rows=193181 loops=1)"
+"  Hash Cond: (order_items.order_id = orders.orders_id)"
+"  ->  Seq Scan on order_items  (cost=0.00..18334.00 rows=1000000 width=33) (actual time=0.010..29.181 rows=1000000 loops=1)"
+"  ->  Hash  (cost=27.48..27.48 rows=405 width=12) (actual time=0.117..0.119 rows=405 loops=1)"
+"        Buckets: 1024  Batches: 1  Memory Usage: 26kB"
+"        ->  Bitmap Heap Scan on orders  (cost=11.42..27.48 rows=405 width=12) (actual time=0.031..0.087 rows=405 loops=1)"
+"              Recheck Cond: (customer_id = 1)"
+"              Heap Blocks: exact=11"
+"              ->  Bitmap Index Scan on orders_customer_id_at_idx  (cost=0.00..11.31 rows=405 width=0) (actual time=0.020..0.020 rows=405 loops=1)"
+"                    Index Cond: (customer_id = 1)"
+"Planning Time: 0.251 ms"
+"Execution Time: 94.340 ms"
+
+
+DROP INDEX IF EXISTS order_items_product_name_idx
+
+Причина: Не используется
+
+EXPLAIN ANALYZE SELECT product_name, price FROM order_items
+"Seq Scan on order_items  (cost=0.00..18334.00 rows=1000000 width=25) (actual time=0.012..52.768 rows=1000000 loops=1)"
+"Planning Time: 1.197 ms"
+"Execution Time: 67.709 ms"
+
+
+BEGIN;
+	INSERT INTO orders (customer_id, order_date) VALUES(1, '2025-07-30');
+	INSERT INTO order_items (order_id, product_name, quantity, price)
+		VALUES
+			(2009, 'Товар 600', 5, 2004.00), 
+			(2009, 'Товар 601', 2, 20204.00), 
+			(2009, 'Товар 602', 7, 12005.00);	
+COMMIT;
+
+
+BEGIN;
+	INSERT INTO orders (customer_id, order_date) VALUES(1, '2025-07-30');
+	INSERT INTO order_items (order_id, product_name, quantity, price)
+		VALUES
+			(2009, 'Товар 600', 5, 2004.00), 
+			(2009, 'Товар 601', 2, 20204.00), 
+			(2009, 'Товар 602', 7, -12005.00);	
+COMMIT;
